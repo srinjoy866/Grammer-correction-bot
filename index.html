@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="DarkOllama GrammarBot - AI-powered grammar correction using Ollama locally">
+    <meta name="author" content="Your Name">
+    <meta name="theme-color" content="#09090b">
+    <title>DarkOllama GrammarBot</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
+    <style>
+        :root {
+            --bg-color: #09090b;
+            --surface-color: #18181b;
+            --border-color: #27272a;
+            --text-primary: #f4f4f5;
+            --text-secondary: #a1a1aa;
+            --accent-color: #8b5cf6;
+            --accent-hover: #7c3aed;
+            --accent-glow: rgba(139, 92, 246, 0.3);
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --warning-color: #f59e0b;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+            --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.6);
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.25s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-color) 0%, #0c0c10 100%);
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Scrollbar --- */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: var(--radius-sm);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3f3f46;
+        }
+
+        /* --- Header --- */
+        header {
+            background: linear-gradient(180deg, var(--surface-color) 0%, rgba(24, 24, 27, 0.95) 100%);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-md);
+            z-index: 10;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+        }
+
+        .brand-icon {
+            font-size: 1.6rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+
+        .settings-area {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .status-indicator {
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            padding: 0.4rem 0.8rem;
+            background: var(--bg-color);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--text-secondary);
+            transition: background-color var(--transition-normal);
+        }
+
+        .dot.connected { 
+            background-color: var(--success-color);
+            box-shadow: 0 0 8px var(--success-color);
+        }
+        .dot.error { 
+            background-color: var(--error-color);
+            box-shadow: 0 0 8px var(--error-color);
+        }
+
+        select, input {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.6rem 0.8rem;
+            border-radius: var(--radius-sm);
+            outline: none;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        select:focus, input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        select {
+            cursor: pointer;
+            min-width: 160px;
+        }
+
+        input::placeholder {
+            color: #52525b;
+        }
+
+        /* --- Main Layout --- */
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            padding: 2rem;
+            overflow: hidden;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(24, 24, 27, 0.5) 0%, rgba(24, 24, 27, 0.2) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        textarea {
+            flex: 1;
+            height: 100%;
+            background-color: rgba(9, 9, 11, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            padding: 1.25rem;
+            font-size: 1.05rem;
+            line-height: 1.7;
+            resize: none;
+            outline: none;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+            font-family: inherit;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        textarea::placeholder {
+            color: #52525b;
+        }
+
+        /* --- Output Area Specifics --- */
+        .output-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .output-div {
+            flex: 1;
+            padding: 1.25rem;
+            background-color: rgba(9, 9, 11, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow-y: auto;
+            line-height: 1.7;
+            font-size: 1.05rem;
+            scroll-behavior: smooth;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(4px);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+            z-index: 5;
+        }
+
+        .output-wrapper:hover .copy-btn {
+            opacity: 1;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+
+        /* --- Controls --- */
+        .controls {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 1rem;
+        }
+
+        button.primary-btn {
+            background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%);
+            color: white;
+            border: none;
+            padding: 0.85rem 2rem;
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 14px var(--accent-glow);
+        }
+
+        button.primary-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--accent-glow);
+        }
+
+        button.primary-btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        button.primary-btn:disabled {
+            background: #3f3f46;
+            cursor: not-allowed;
+            opacity: 0.6;
+            box-shadow: none;
+        }
+
+        button.secondary-btn {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.6rem 1.25rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        button.secondary-btn:hover {
+            border-color: var(--text-primary);
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* --- Toast Notification --- */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .toast {
+            background-color: var(--surface-color);
+            border-left: 4px solid var(--accent-color);
+            color: var(--text-primary);
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-lg);
+            min-width: 250px;
+            max-width: 350px;
+            animation: slideIn 0.3s ease-out forwards;
+            font-size: 0.9rem;
+            pointer-events: auto;
+        }
+
+        .toast.error { border-left-color: var(--error-color); }
+        .toast.success { border-left-color: var(--success-color); }
+        .toast.warning { border-left-color: var(--warning-color); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        /* --- Spinner --- */
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- Highlight Styles --- */
+        .highlight-added {
+            background-color: rgba(16, 185, 129, 0.25);
+            border-radius: 3px;
+            padding: 2px 4px;
+            box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.4);
+            transition: background-color var(--transition-fast);
+        }
+
+        .highlight-added:hover {
+            background-color: rgba(16, 185, 129, 0.4);
+        }
+
+        .highlight-removed {
+            background-color: rgba(239, 68, 68, 0.25);
+            border-radius: 3px;
+            padding: 2px 4px;
+            text-decoration: line-through;
+            box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.4);
+        }
+
+        /* --- Keyboard Shortcut Hint --- */
+        .shortcut-hint {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            text-align: right;
+        }
+
+        kbd {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            font-family: inherit;
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 768px) {
+            main {
+                grid-template-columns: 1fr;
+                overflow-y: auto;
+                padding: 1rem;
+                gap: 1rem;
+            }
+
+            .panel {
+                min-height: 300px;
+            }
+
+            header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+                padding: 1rem;
+            }
+
+            .settings-area {
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: space-between;
+            }
+
+            .toast-container {
+                left: 1rem;
+                right: 1rem;
+                bottom: 1rem;
+            }
+
+            .toast {
+                min-width: auto;
+            }
+        }
+
+        /* --- Loading Shimmer Effect --- */
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+
+        .loading-shimmer {
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <span class="brand-icon">✨</span> DarkOllama GrammarBot
+        </div>
+        <div class="settings-area">
+            <div class="status-indicator">
+                <div id="statusDot" class="dot"></div>
+                <span id="statusText">Disconnected</span>
+            </div>
+            <input type="text" id="hostUrl" value="http://localhost:11434" placeholder="Ollama URL">
+            <select id="modelSelect">
+                <option value="" disabled selected>Loading models...</option>
+            </select>
+        </div>
+    </header>
+
+    <main>
+        <!-- Input Section -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="label">Original Text</span>
+                <button class="secondary-btn" onclick="clearInput()">Clear</button>
+            </div>
+            <textarea id="inputText" placeholder="Paste or type your text here for grammar correction..."></textarea>
+            <div class="controls">
+                <button class="primary-btn" id="correctBtn" onclick="performCorrection()">
+                    <div class="spinner" id="btnSpinner"></div>
+                    <span id="btnText">Correct Grammar</span>
+                </button>
+            </div>
+            <div class="shortcut-hint">Shortcut: <kbd>Ctrl</kbd> + <kbd>Enter</kbd></div>
+        </div>
+
+        <!-- Output Section -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="label">Corrected Text</span>
+                <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">AI Suggestion</span>
+            </div>
+            <div class="output-wrapper">
+                <button class="copy-btn" onclick="copyOutput()">📋 Copy</button>
+                <div id="outputText" class="output-div" placeholder="Correction will appear here..."></div>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // --- Configuration & State ---
+        const DEFAULT_HOST = 'http://localhost:11434';
+        let currentModels = [];
+
+        // --- DOM Elements ---
+        const hostInput = document.getElementById('hostUrl');
+        const modelSelect = document.getElementById('modelSelect');
+        const inputText = document.getElementById('inputText');
+        const outputText = document.getElementById('outputText');
+        const correctBtn = document.getElementById('correctBtn');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const btnText = document.getElementById('btnText');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+
+        // --- Initialization ---
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchModels();
+            checkConnection();
+        });
+
+        hostInput.addEventListener('change', () => {
+            fetchModels();
+            checkConnection();
+        });
+
+        // Keyboard shortcut: Ctrl+Enter to submit
+        inputText.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                performCorrection();
+            }
+        });
+
+        // --- Connection & Model Logic ---
+
+        async function checkConnection() {
+            try {
+                const response = await fetch(`${hostInput.value}/api/tags`);
+                if (response.ok) {
+                    updateStatus(true);
+                } else {
+                    updateStatus(false);
+                }
+            } catch (error) {
+                updateStatus(false);
+            }
+        }
+
+        async function fetchModels() {
+            try {
+                const response = await fetch(`${hostInput.value}/api/tags`);
+                if (!response.ok) throw new Error('Failed to fetch models');
+
+                const data = await response.json();
+                currentModels = data.models;
+
+                // Populate Select
+                modelSelect.innerHTML = '';
+                if (currentModels.length === 0) {
+                    const option = document.createElement('option');
+                    option.text = "No models found";
+                    modelSelect.add(option);
+                } else {
+                    currentModels.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.name;
+                        option.text = model.name;
+                        modelSelect.appendChild(option);
+                    });
+                }
+                showToast(`Loaded ${currentModels.length} model${currentModels.length !== 1 ? 's' : ''}.`, 'success');
+            } catch (error) {
+                console.error(error);
+                modelSelect.innerHTML = '<option value="" disabled selected>Connection Error</option>';
+            }
+        }
+
+        function updateStatus(isConnected) {
+            if (isConnected) {
+                statusDot.className = 'dot connected';
+                statusText.textContent = 'Connected';
+            } else {
+                statusDot.className = 'dot error';
+                statusText.textContent = 'Disconnected';
+            }
+        }
+
+        // --- Core Functionality ---
+
+        async function performCorrection() {
+            const text = inputText.value.trim();
+            const model = modelSelect.value;
+            const url = hostInput.value;
+
+            if (!text) {
+                showToast("Please enter some text first.", "warning");
+                return;
+            }
+            if (!model) {
+                showToast("No model selected. Is Ollama running?", "error");
+                return;
+            }
+
+            // UI Loading State
+            setLoading(true);
+            outputText.innerHTML = '<span style="color: var(--text-secondary);">Processing...</span>';
+
+            // Construct System Prompt
+            const systemPrompt = `You are a professional editor and grammar assistant.
+Your task is to correct the spelling, grammar, and punctuation of the user's text.
+Maintain the original tone and style of the user.
+If the text is already correct, return it exactly as is.
+Do NOT include any conversational filler, explanations, or markdown formatting.
+Output ONLY the corrected text.`;
+
+            try {
+                const response = await fetch(`${url}/api/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: model,
+                        prompt: text,
+                        system: systemPrompt,
+                        stream: true,
+                        options: {
+                            temperature: 0.3
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Ollama Error: ${response.statusText}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                outputText.innerHTML = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split("\n").filter(line => line.trim() !== "");
+
+                    for (const line of lines) {
+                        try {
+                            const json = JSON.parse(line);
+                            if (json.response) {
+                                outputText.innerHTML += json.response;
+                                outputText.scrollTop = outputText.scrollHeight;
+                            }
+                        } catch (e) {
+                            console.error("Parse error", e);
+                        }
+                    }
+                }
+
+                // Highlight differences
+                const finalText = outputText.innerText;
+                const highlighted = highlightDifferences(text, finalText);
+                outputText.innerHTML = highlighted;
+                showToast("Grammar correction complete!", "success");
+
+            } catch (error) {
+                console.error(error);
+                showToast("Failed to connect to Ollama. Check console/CORS.", "error");
+                outputText.innerHTML = "<em style='color: var(--error-color);'>Error: Could not reach AI. Ensure Ollama is running.</em>";
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // --- Helpers ---
+
+        function setLoading(isLoading) {
+            correctBtn.disabled = isLoading;
+            if (isLoading) {
+                btnSpinner.style.display = 'block';
+                btnText.textContent = 'Correcting...';
+            } else {
+                btnSpinner.style.display = 'none';
+                btnText.textContent = 'Correct Grammar';
+            }
+        }
+
+        function clearInput() {
+            inputText.value = '';
+            outputText.innerHTML = '';
+            inputText.focus();
+        }
+
+        function copyOutput() {
+            const text = outputText.innerText;
+            if (!text) {
+                showToast("Nothing to copy.", "warning");
+                return;
+            }
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("Copied to clipboard!", "success");
+            }).catch(() => {
+                showToast("Failed to copy.", "error");
+            });
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease-in forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function highlightDifferences(original, corrected) {
+            const originalWords = original.split(/\s+/);
+            const correctedWords = corrected.split(/\s+/);
+
+            let result = "";
+            const maxLength = Math.max(originalWords.length, correctedWords.length);
+
+            for (let i = 0; i < maxLength; i++) {
+                const origWord = originalWords[i] || "";
+                const corrWord = correctedWords[i] || "";
+
+                if (origWord !== corrWord) {
+                    if (corrWord) {
+                        result += `<span class="highlight-added">${escapeHtml(corrWord)}</span> `;
+                    }
+                } else {
+                    result += escapeHtml(corrWord) + " ";
+                }
+            }
+
+            return result.trim();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
